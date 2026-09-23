@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: closedclub-postgres
+    environment:
+      POSTGRES_DB: closedclub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
