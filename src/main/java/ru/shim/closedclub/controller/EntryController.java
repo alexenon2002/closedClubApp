@@ -17,8 +17,9 @@ public class EntryController {
     public EntryController(EntryService entryService) {
         this.entryService = entryService;
     }
+
     @PostMapping
-    public EntryResponse enter(@RequestBody EntryRequest entryRequest){
+    public EntryResponse enter(@RequestBody EntryRequest entryRequest) {
         return entryService.enter(entryRequest.code());
     }
 }

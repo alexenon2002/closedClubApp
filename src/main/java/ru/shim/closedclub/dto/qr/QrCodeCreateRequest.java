@@ -1,4 +1,4 @@
 package ru.shim.closedclub.dto.qr;
 
-public class QrCodeCreateRequest {
+public record QrCodeCreateRequest(Long memberId) {
 }

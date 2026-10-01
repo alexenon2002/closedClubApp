@@ -1,9 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/lms
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/closedclub
+    username: postgres1
+    password: postgres1
   jpa:
     hibernate:
       ddl-auto: update
@@ -11,4 +10,3 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect

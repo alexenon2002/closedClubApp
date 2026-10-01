@@ -1,7 +1,6 @@
 package ru.shim.closedclub.entity;
 
 import jakarta.persistence.*;
-
 import java.util.List;
 
 @Entity
@@ -15,7 +14,7 @@ public class Member {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @OneToMany(mappedBy = "member")
+    @OneToMany(mappedBy = "member",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<QrCode> qrCodes;
 
     public Long getId() {

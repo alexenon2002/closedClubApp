@@ -1,4 +1,4 @@
 package ru.shim.closedclub.dto.member;
 
-public class MemberResponse {
+public record MemberResponse(Long id, String fullName) {
 }

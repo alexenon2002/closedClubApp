@@ -21,7 +21,7 @@ public class EntryService {
     @Transactional
     public EntryResponse enter(UUID code) {
         QrCode qrCode = qrCodeRepository.findByCode(code)
-                .orElseThrow(() -> new AccessDeniedException("Вход запрещён:QR-код не найден"));
+                .orElseThrow(() -> new AccessDeniedException("Вход запрещён: QR-код не найден"));
         Member member = qrCode.getMember();
         UUID newCode = UUID.randomUUID();
         qrCode.setCode(newCode);
