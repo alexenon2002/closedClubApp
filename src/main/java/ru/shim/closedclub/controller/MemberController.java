@@ -1,5 +1,6 @@
 package ru.shim.closedclub.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -10,7 +11,7 @@ import ru.shim.closedclub.service.MemberService;
 
 
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/api/v1/members")
 public class MemberController {
     private final MemberService memberService;
 
@@ -19,13 +20,13 @@ public class MemberController {
     }
 
     @PostMapping
-    public MemberResponse create(@RequestBody MemberRequest memberRequest) {
+    public MemberResponse create(@Valid @RequestBody MemberRequest memberRequest) {
         return memberService.create(memberRequest);
     }
 
     @GetMapping
-    public Page<MemberResponse> getMembers(@RequestParam(required = false) String fullName, Pageable pageable) {
-        return memberService.getMembers(fullName, pageable);
+    public Page<MemberResponse> getMembers(@RequestParam(required = false) String surname, Pageable pageable) {
+        return memberService.getMembers(surname, pageable);
     }
 
     @GetMapping("/{id}")
@@ -34,7 +35,7 @@ public class MemberController {
     }
 
     @PutMapping("/{id}")
-    public MemberResponse update(@PathVariable long id, @RequestBody MemberRequest memberRequest) {
+    public MemberResponse update(@PathVariable long id,@Valid @RequestBody MemberRequest memberRequest) {
         return memberService.update(id, memberRequest);
     }
 

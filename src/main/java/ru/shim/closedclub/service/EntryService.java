@@ -23,6 +23,9 @@ public class EntryService {
         QrCode qrCode = qrCodeRepository.findByCode(code)
                 .orElseThrow(() -> new AccessDeniedException("Вход запрещён: QR-код не найден"));
         Member member = qrCode.getMember();
+        if (member.getDeletedAt() != null) {
+            throw new AccessDeniedException("Вход запрещён: участник удалён");
+        }
         UUID newCode = UUID.randomUUID();
         qrCode.setCode(newCode);
         return new EntryResponse(member.getId(), member.getFullName(), newCode);

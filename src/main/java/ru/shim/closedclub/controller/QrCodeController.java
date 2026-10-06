@@ -1,5 +1,6 @@
 package ru.shim.closedclub.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +10,7 @@ import ru.shim.closedclub.dto.qr.QrCodeUpdateRequest;
 import ru.shim.closedclub.service.QrCodeService;
 
 @RestController
-@RequestMapping("/api/qr-codes")
+@RequestMapping("/api/v1/qr-codes")
 
 public class QrCodeController {
     private final QrCodeService qrCodeService;
@@ -20,7 +21,7 @@ public class QrCodeController {
     }
 
     @PostMapping
-    public QrCodeResponse create(@RequestBody QrCodeCreateRequest request) {
+    public QrCodeResponse create(@Valid @RequestBody QrCodeCreateRequest request) {
         return qrCodeService.create(request);
     }
 
@@ -35,7 +36,7 @@ public class QrCodeController {
     }
 
     @PutMapping("/{id}")
-    public QrCodeResponse update(@PathVariable long id, @RequestBody QrCodeUpdateRequest request) {
+    public QrCodeResponse update(@PathVariable long id, @Valid @RequestBody QrCodeUpdateRequest request) {
         return qrCodeService.update(id, request);
     }
 

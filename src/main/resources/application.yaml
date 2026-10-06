@@ -1,11 +1,13 @@
 spring:
+  Liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   datasource:
     url: jdbc:postgresql://localhost:5432/closedclub
     username: postgres1
     password: postgres1
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:

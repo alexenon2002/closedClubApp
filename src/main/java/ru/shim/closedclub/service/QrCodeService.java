@@ -8,7 +8,6 @@ import ru.shim.closedclub.dto.qr.QrCodeResponse;
 import ru.shim.closedclub.dto.qr.QrCodeUpdateRequest;
 import ru.shim.closedclub.entity.Member;
 import ru.shim.closedclub.entity.QrCode;
-import ru.shim.closedclub.exception.ResourceNotFoundException;
 import ru.shim.closedclub.repository.MemberRepository;
 import ru.shim.closedclub.repository.QrCodeRepository;
 
@@ -36,15 +35,16 @@ public class QrCodeService {
     }
 
     public QrCodeResponse getById(long id) {
-        QrCode qrCode = qrCodeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("QR-код с id " + id + " не найден"));
-        return new QrCodeResponse(qrCode.getId(), qrCode.getCode(), qrCode.getMember().getId());
+        QrCode qrCode = qrCodeRepository.getByIdOrThrow(id);
+        return new QrCodeResponse(
+                qrCode.getId(),
+                qrCode.getCode(),
+                qrCode.getMember().getId()
+        );
     }
 
     public QrCodeResponse create(QrCodeCreateRequest qrCodeCreateRequest) {
-        Member member = memberRepository.findById(qrCodeCreateRequest.memberId())
-                .orElseThrow(() -> new ResourceNotFoundException
-                        ("Участник с id " + qrCodeCreateRequest.memberId() + " не найден"));
+        Member member = memberRepository.getByIdOrThrow(qrCodeCreateRequest.memberId());
         QrCode qrCode = new QrCode();
         qrCode.setCode(UUID.randomUUID());
         qrCode.setMember(member);
@@ -53,18 +53,15 @@ public class QrCodeService {
     }
 
     public QrCodeResponse update(Long id, QrCodeUpdateRequest request) {
-        QrCode qrCode = qrCodeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("QR-код с id " + id + " не найден"));
-        Member member = memberRepository.findById(request.memberId())
-                .orElseThrow(() -> new ResourceNotFoundException("Участник с id " + request.memberId() + " не найден"));
+        QrCode qrCode = qrCodeRepository.getByIdOrThrow(id);
+        Member member = memberRepository.getByIdOrThrow(request.memberId());
         qrCode.setMember(member);
         QrCode updatedQrCode = qrCodeRepository.save(qrCode);
         return new QrCodeResponse(updatedQrCode.getId(), updatedQrCode.getCode(), updatedQrCode.getMember().getId());
     }
 
     public void delete(Long id) {
-        QrCode qrCode = qrCodeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("QR-код с id " + id + " не найден"));
+        QrCode qrCode = qrCodeRepository.getByIdOrThrow(id);
         qrCodeRepository.delete(qrCode);
     }
 }
