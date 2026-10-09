@@ -6,17 +6,13 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "qr_codes")
-public class QrCode {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class QrCode extends BaseEntity {
 
     @Column(nullable = false, unique = true)
     private UUID code;
 
     @ManyToOne
-    @JoinColumn(name = "member_id",nullable = false)
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
     public Member getMember() {
@@ -27,14 +23,6 @@ public class QrCode {
         this.member = member;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public UUID getCode() {
         return code;
     }
@@ -42,4 +30,5 @@ public class QrCode {
     public void setCode(UUID code) {
         this.code = code;
     }
+
 }
