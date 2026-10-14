@@ -1,20 +1,13 @@
 package ru.shim.closedclub.controller;
 
 import org.jspecify.annotations.NonNull;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import ru.shim.closedclub.config.PostgresTestConfiguration;
+import ru.shim.closedclub.BaseIntegrationTest;
 import ru.shim.closedclub.entity.Member;
 import ru.shim.closedclub.entity.QrCode;
-import ru.shim.closedclub.repository.MemberRepository;
-import ru.shim.closedclub.repository.QrCodeRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,10 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(PostgresTestConfiguration.class)
-class MemberControllerIntegrationTest {
+class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     private static final String URL = "/api/v1/members";
     private static final long MISSING_ID = Long.MAX_VALUE;
@@ -50,22 +40,8 @@ class MemberControllerIntegrationTest {
             }
             """;
 
-    @Autowired
-    private MockMvc mockMvc;
 
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @Autowired
-    private QrCodeRepository qrCodeRepository;
-
-    @BeforeEach
-    void clearDatabase() {
-        qrCodeRepository.deleteAllInBatch();
-        memberRepository.deleteAllInBatch();
-    }
-
-    // Создание участника: проверяем ответ и сохранение в БД.
+    @DisplayName("Создание участника: проверяем ответ и сохранение в БД.")
     @Test
     void create_whenRequestValid_returnsAndPersistsMember() throws Exception {
         ResultActions result = mockMvc.perform(
@@ -91,7 +67,7 @@ class MemberControllerIntegrationTest {
                 .andExpect(jsonPath("$.surname").value("Петров"));
     }
 
-    // Пустые имя и фамилия: получаем 400, запись не создаётся.
+    @DisplayName("Пустые имя и фамилия: получаем 400, запись не создаётся.")
     @Test
     void create_whenRequiredFieldsBlank_returnsBadRequest() throws Exception {
         mockMvc.perform(
@@ -109,7 +85,7 @@ class MemberControllerIntegrationTest {
         assertEquals(0L, memberRepository.count());
     }
 
-    // Получение существующего участника.
+    @DisplayName("Получение существующего участника.")
     @Test
     void getById_whenMemberExists_returnsMember() throws Exception {
         Member member = saveMember("Петров");
@@ -122,7 +98,7 @@ class MemberControllerIntegrationTest {
                 .andExpect(jsonPath("$.surname").value("Петров"));
     }
 
-    // Получение участника, которого нет в БД.
+    @DisplayName("Получение участника, которого нет в БД.")
     @Test
     void getById_whenMemberMissing_returnsNotFound() throws Exception {
         mockMvc.perform(get(URL + "/{id}", MISSING_ID))
@@ -132,7 +108,7 @@ class MemberControllerIntegrationTest {
                         .value("Участник с id " + MISSING_ID + " не найден"));
     }
 
-    // Удалённый участник не должен возвращаться через API.
+    @DisplayName("Удалённый участник не должен возвращаться через API.")
     @Test
     void getById_whenMemberDeleted_returnsNotFound() throws Exception {
         Member member = saveDeletedMember("Петров");
@@ -144,7 +120,7 @@ class MemberControllerIntegrationTest {
                         .value("Участник с id " + member.getId() + " не найден"));
     }
 
-    // Пагинация списка: удалённые участники не учитываются.
+    @DisplayName("Пагинация списка: удалённые участники не учитываются.")
     @Test
     void getMembers_withoutSurname_returnsPageAndExcludesDeleted() throws Exception {
         saveDeletedMember("Смирнов");
@@ -167,7 +143,7 @@ class MemberControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(2));
     }
 
-    // Поиск по части фамилии без учёта регистра.
+    @DisplayName("Поиск по части фамилии без учёта регистра.")
     @Test
     void getMembers_withSurname_filtersIgnoringCaseAndExcludesDeleted() throws Exception {
         Member matching = saveMember("Петров");
@@ -185,7 +161,7 @@ class MemberControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
-    // Фильтр из пробелов должен работать как отсутствие фильтра.
+    @DisplayName("Фильтр из пробелов должен работать как отсутствие фильтра.")
     @Test
     void getMembers_withBlankSurname_returnsAllActiveMembers() throws Exception {
         Member first = saveMember("Петров");
@@ -204,7 +180,7 @@ class MemberControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
 
-    // Обновление данных, включая удаление необязательного отчества.
+    @DisplayName("Обновление данных, включая удаление необязательного отчества.")
     @Test
     void update_whenRequestValid_persistsChangesAndClearsMiddleName() throws Exception {
         Member member = saveMember("Петров");
@@ -237,7 +213,7 @@ class MemberControllerIntegrationTest {
         assertEquals(1L, memberRepository.count());
     }
 
-    // Некорректное обновление не должно менять сохранённые данные.
+    @DisplayName("Некорректное обновление не должно менять сохранённые данные.")
     @Test
     void update_whenRequiredFieldsBlank_returnsBadRequestAndKeepsMember() throws Exception {
         Member member = saveMember("Петров");
@@ -265,7 +241,7 @@ class MemberControllerIntegrationTest {
         assertEquals(1L, memberRepository.count());
     }
 
-    // Обновление отсутствующего участника.
+    @DisplayName("Обновление отсутствующего участника.")
     @Test
     void update_whenMemberMissing_returnsNotFound() throws Exception {
         mockMvc.perform(
@@ -279,7 +255,7 @@ class MemberControllerIntegrationTest {
         assertEquals(0L, memberRepository.count());
     }
 
-    // Обновление удалённого участника должно быть запрещено через 404.
+    @DisplayName("Обновление удалённого участника должно быть запрещено через 404.")
     @Test
     void update_whenMemberDeleted_returnsNotFoundAndKeepsMember() throws Exception {
         Member member = saveDeletedMember("Сидоров");
@@ -303,7 +279,7 @@ class MemberControllerIntegrationTest {
         assertEquals(1L, memberRepository.count());
     }
 
-    // soft delete сохраняет запись участника и его QR-код.
+    @DisplayName("soft delete сохраняет запись участника и его QR-код.")
     @Test
     void delete_whenMemberExists_marksDeletedKeepsQrAndRejectsRepeat() throws Exception {
         Member member = saveMember("Петров");
@@ -355,7 +331,7 @@ class MemberControllerIntegrationTest {
         );
     }
 
-    // Удаление отсутствующего участника.
+    @DisplayName("Удаление отсутствующего участника.")
     @Test
     void delete_whenMemberMissing_returnsNotFound() throws Exception {
         mockMvc.perform(delete(URL + "/{id}", MISSING_ID))

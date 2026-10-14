@@ -1,19 +1,12 @@
 package ru.shim.closedclub.controller;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import ru.shim.closedclub.config.PostgresTestConfiguration;
+import ru.shim.closedclub.BaseIntegrationTest;
 import ru.shim.closedclub.entity.Member;
 import ru.shim.closedclub.entity.QrCode;
-import ru.shim.closedclub.repository.MemberRepository;
-import ru.shim.closedclub.repository.QrCodeRepository;
 
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,30 +18,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(PostgresTestConfiguration.class)
-class EntryControllerIntegrationTest {
+class EntryControllerIntegrationTest extends BaseIntegrationTest {
 
     private static final String URL = "/api/v1/entry";
 
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @Autowired
-    private QrCodeRepository qrCodeRepository;
-
-    @BeforeEach
-    void clearDatabase() {
-        qrCodeRepository.deleteAllInBatch();
-        memberRepository.deleteAllInBatch();
-    }
-
-    // Проверяем успешный вход и замену использованного QR-кода новым.
+    @DisplayName("Проверяем успешный вход и замену использованного QR-кода новым.")
     @Test
     void enter_whenCodeExists_returnsMemberAndRotatesCode() throws Exception {
         Member member = new Member();
@@ -84,7 +59,7 @@ class EntryControllerIntegrationTest {
         result.andExpect(jsonPath("$.newQrCode").value(storedQrCode.getCode().toString()));
     }
 
-    // Проверяем, что повторный вход по использованному QR-коду запрещён.
+    @DisplayName("Проверяем, что повторный вход по использованному QR-коду запрещён.")
     @Test
     void enter_whenCodeAlreadyUsed_returnsForbidden() throws Exception {
         Member member = new Member();
@@ -135,7 +110,7 @@ class EntryControllerIntegrationTest {
         assertEquals(codeAfterFirstEntry, storedQrCode.getCode());
     }
 
-    // Проверяем, что удалённому участнику запрещён вход и его QR-код не меняется.
+    @DisplayName("Проверяем, что удалённому участнику запрещён вход и его QR-код не меняется.")
     @Test
     void enter_whenMemberDeleted_returnsForbiddenAndKeepsCode() throws Exception {
         Member member = new Member();
@@ -173,7 +148,7 @@ class EntryControllerIntegrationTest {
         assertEquals(originalCode, storedQrCode.getCode());
     }
 
-    // Проверяем ошибку 400 при отсутствии обязательного поля code.
+    @DisplayName("Проверяем ошибку 400 при отсутствии обязательного поля code.")
     @Test
     void enter_whenCodeMissing_returnsBadRequest() throws Exception {
         mockMvc.perform(
@@ -187,7 +162,7 @@ class EntryControllerIntegrationTest {
                         .value(startsWith("code: ")));
     }
 
-    // Проверяем ошибку 400 при неверном формате UUID.
+    @DisplayName("Проверяем ошибку 400 при неверном формате UUID.")
     @Test
     void enter_whenCodeHasInvalidFormat_returnsBadRequest() throws Exception {
         mockMvc.perform(
@@ -199,7 +174,7 @@ class EntryControllerIntegrationTest {
         ).andExpect(status().isBadRequest());
     }
 
-    // Проверяем ошибку 403 при входе по несуществующему QR-коду.
+    @DisplayName("Проверяем ошибку 403 при входе по несуществующему QR-коду.")
     @Test
     void enter_whenCodeNotFound_returnsForbidden() throws Exception {
         UUID unknownQrCode = UUID.randomUUID();
