@@ -1,6 +1,6 @@
 package ru.shim.closedclub.controller;
 
-import org.jspecify.annotations.NonNull;
+import org.springframework.test.context.jdbc.Sql;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -9,7 +9,6 @@ import ru.shim.closedclub.BaseIntegrationTest;
 import ru.shim.closedclub.entity.Member;
 import ru.shim.closedclub.entity.QrCode;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -87,12 +86,14 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Получение существующего участника.")
     @Test
+    @Sql("classpath:sql/member/active-member.sql")
     void getById_whenMemberExists_returnsMember() throws Exception {
-        Member member = saveMember("Петров");
 
-        mockMvc.perform(get(URL + "/{id}", member.getId()))
+        long memberId = 1L;
+
+        mockMvc.perform(get(URL + "/{id}", memberId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(member.getId()))
+                .andExpect(jsonPath("$.id").value(memberId))
                 .andExpect(jsonPath("$.firstName").value("Иван"))
                 .andExpect(jsonPath("$.middleName").value("Петрович"))
                 .andExpect(jsonPath("$.surname").value("Петров"));
@@ -110,22 +111,26 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Удалённый участник не должен возвращаться через API.")
     @Test
+    @Sql("classpath:sql/member/deleted-member.sql")
     void getById_whenMemberDeleted_returnsNotFound() throws Exception {
-        Member member = saveDeletedMember("Петров");
+        long memberId = 1L;
 
-        mockMvc.perform(get(URL + "/{id}", member.getId()))
+        Member stored = memberRepository.findById(memberId).orElseThrow();
+
+        assertNotNull(stored.getDeletedAt());
+
+        mockMvc.perform(get(URL + "/{id}", memberId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message")
-                        .value("Участник с id " + member.getId() + " не найден"));
+                        .value("Участник с id " + memberId + " не найден"));
     }
 
     @DisplayName("Пагинация списка: удалённые участники не учитываются.")
     @Test
+    @Sql("classpath:sql/member/members-for-pagination.sql")
     void getMembers_withoutSurname_returnsPageAndExcludesDeleted() throws Exception {
-        saveDeletedMember("Смирнов");
-        saveMember("Антонов");
-        Member second = saveMember("Петров");
+        long secondActiveMemberId = 3L;
 
         mockMvc.perform(
                         get(URL)
@@ -135,7 +140,7 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].id").value(second.getId()))
+                .andExpect(jsonPath("$.content[0].id").value(secondActiveMemberId))
                 .andExpect(jsonPath("$.content[0].surname").value("Петров"))
                 .andExpect(jsonPath("$.number").value(1))
                 .andExpect(jsonPath("$.size").value(1))
@@ -145,10 +150,9 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Поиск по части фамилии без учёта регистра.")
     @Test
+    @Sql("classpath:sql/member/members-for-surname-filter.sql")
     void getMembers_withSurname_filtersIgnoringCaseAndExcludesDeleted() throws Exception {
-        Member matching = saveMember("Петров");
-        saveMember("Иванов");
-        saveDeletedMember("ПЕТРЕНКО");
+        long matchingMemberId = 1L;
 
         mockMvc.perform(
                         get(URL)
@@ -156,17 +160,17 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].id").value(matching.getId()))
+                .andExpect(jsonPath("$.content[0].id").value(matchingMemberId))
                 .andExpect(jsonPath("$.content[0].surname").value("Петров"))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @DisplayName("Фильтр из пробелов должен работать как отсутствие фильтра.")
     @Test
+    @Sql("classpath:sql/member/members-for-blank-filter.sql")
     void getMembers_withBlankSurname_returnsAllActiveMembers() throws Exception {
-        Member first = saveMember("Петров");
-        Member second = saveMember("Иванов");
-        saveDeletedMember("Сидоров");
+        long firstMemberId = 1L;
+        long secondMemberId = 2L;
 
         mockMvc.perform(
                         get(URL)
@@ -175,18 +179,19 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.content[0].id").value(first.getId()))
-                .andExpect(jsonPath("$.content[1].id").value(second.getId()))
+                .andExpect(jsonPath("$.content[0].id").value(firstMemberId))
+                .andExpect(jsonPath("$.content[1].id").value(secondMemberId))
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
 
     @DisplayName("Обновление данных, включая удаление необязательного отчества.")
     @Test
+    @Sql("classpath:sql/member/active-member.sql")
     void update_whenRequestValid_persistsChangesAndClearsMiddleName() throws Exception {
-        Member member = saveMember("Петров");
+        long memberId = 1L;
 
         mockMvc.perform(
-                        put(URL + "/{id}", member.getId())
+                        put(URL + "/{id}", memberId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -197,13 +202,13 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                                         """)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(member.getId()))
+                .andExpect(jsonPath("$.id").value(memberId))
                 .andExpect(jsonPath("$.firstName").value("Пётр"))
                 .andExpect(jsonPath("$.middleName").value(nullValue()))
                 .andExpect(jsonPath("$.surname").value("Сидоров"));
 
         Member stored = memberRepository
-                .findById(member.getId())
+                .findById(memberId)
                 .orElseThrow();
 
         assertEquals("Пётр", stored.getFirstName());
@@ -215,11 +220,12 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Некорректное обновление не должно менять сохранённые данные.")
     @Test
+    @Sql("classpath:sql/member/active-member.sql")
     void update_whenRequiredFieldsBlank_returnsBadRequestAndKeepsMember() throws Exception {
-        Member member = saveMember("Петров");
+        long memberId = 1L;
 
         mockMvc.perform(
-                        put(URL + "/{id}", member.getId())
+                        put(URL + "/{id}", memberId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(INVALID_REQUEST)
                 )
@@ -231,7 +237,7 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                         .value(containsString("surname")));
 
         Member stored = memberRepository
-                .findById(member.getId())
+                .findById(memberId)
                 .orElseThrow();
 
         assertEquals("Иван", stored.getFirstName());
@@ -257,11 +263,12 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Обновление удалённого участника должно быть запрещено через 404.")
     @Test
+    @Sql("classpath:sql/member/deleted-member.sql")
     void update_whenMemberDeleted_returnsNotFoundAndKeepsMember() throws Exception {
-        Member member = saveDeletedMember("Сидоров");
+        long memberId = 1L;
 
         mockMvc.perform(
-                        put(URL + "/{id}", member.getId())
+                        put(URL + "/{id}", memberId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(VALID_REQUEST)
                 )
@@ -269,7 +276,7 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.status").value(404));
 
         Member stored = memberRepository
-                .findById(member.getId())
+                .findById(memberId)
                 .orElseThrow();
 
         assertEquals("Иван", stored.getFirstName());
@@ -281,23 +288,22 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("soft delete сохраняет запись участника и его QR-код.")
     @Test
+    @Sql({
+            "classpath:sql/member/active-member.sql",
+            "classpath:sql/member/qr-code-for-member.sql"
+    })
     void delete_whenMemberExists_marksDeletedKeepsQrAndRejectsRepeat() throws Exception {
-        Member member = saveMember("Петров");
+        long memberId = 1L;
+        long qrCodeId = 1L;
 
-        UUID originalCode = UUID.randomUUID();
+        UUID originalCode = UUID.fromString("11111111-1111-4111-8111-111111111111");
 
-        QrCode qrCode = new QrCode();
-        qrCode.setCode(originalCode);
-        qrCode.setMember(member);
-
-        QrCode savedQrCode = qrCodeRepository.saveAndFlush(qrCode);
-
-        mockMvc.perform(delete(URL + "/{id}", member.getId()))
+        mockMvc.perform(delete(URL + "/{id}", memberId))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         Member stored = memberRepository
-                .findById(member.getId())
+                .findById(memberId)
                 .orElseThrow();
 
         assertNotNull(stored.getDeletedAt());
@@ -305,24 +311,24 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
         assertEquals(1L, memberRepository.count());
 
         assertTrue(memberRepository
-                .findByIdAndDeletedAtIsNull(member.getId())
+                .findByIdAndDeletedAtIsNull(memberId)
                 .isEmpty());
 
         QrCode storedQrCode = qrCodeRepository
-                .findById(savedQrCode.getId())
+                .findById(qrCodeId)
                 .orElseThrow();
 
         assertEquals(originalCode, storedQrCode.getCode());
-        assertEquals(member.getId(), storedQrCode.getMember().getId());
+        assertEquals(memberId, storedQrCode.getMember().getId());
         assertEquals(1L, qrCodeRepository.count());
 
         // Повторное удаление возвращает 404.
-        mockMvc.perform(delete(URL + "/{id}", member.getId()))
+        mockMvc.perform(delete(URL + "/{id}", memberId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
 
         Member afterRepeatedDelete = memberRepository
-                .findById(member.getId())
+                .findById(memberId)
                 .orElseThrow();
 
         assertEquals(
@@ -339,23 +345,5 @@ class MemberControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.status").value(404));
 
         assertEquals(0L, memberRepository.count());
-    }
-
-    // Вспомогательный метод подготовки активного участника.
-    private @NonNull Member saveMember(String surname) {
-        Member member = new Member();
-        member.setFirstName("Иван");
-        member.setMiddleName("Петрович");
-        member.setSurname(surname);
-
-        return memberRepository.saveAndFlush(member);
-    }
-
-    // Вспомогательный метод подготовки удалённого участника.
-    private @NonNull Member saveDeletedMember(String surname) {
-        Member member = saveMember(surname);
-        member.setDeletedAt(LocalDateTime.now().minusDays(1));
-
-        return memberRepository.saveAndFlush(member);
     }
 }

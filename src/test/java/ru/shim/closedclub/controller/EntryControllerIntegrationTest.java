@@ -1,11 +1,11 @@
 package ru.shim.closedclub.controller;
 
+import org.springframework.test.context.jdbc.Sql;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 import ru.shim.closedclub.BaseIntegrationTest;
-import ru.shim.closedclub.entity.Member;
 import ru.shim.closedclub.entity.QrCode;
 
 import static org.hamcrest.Matchers.startsWith;
@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -25,18 +24,12 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Проверяем успешный вход и замену использованного QR-кода новым.")
     @Test
+    @Sql("classpath:sql/entry/active-member-with-qr.sql")
     void enter_whenCodeExists_returnsMemberAndRotatesCode() throws Exception {
-        Member member = new Member();
-        member.setFirstName("Иван");
-        member.setMiddleName("Петрович");
-        member.setSurname("Петров");
-        Member savedMember = memberRepository.saveAndFlush(member);
+        long memberId = 1L;
+        long qrCodeId = 1L;
 
-        UUID originalCode = UUID.randomUUID();
-        QrCode qrCode = new QrCode();
-        qrCode.setCode(originalCode);
-        qrCode.setMember(savedMember);
-        QrCode savedQrCode = qrCodeRepository.saveAndFlush(qrCode);
+        UUID originalCode = UUID.fromString("11111111-1111-4111-8111-111111111111");
 
         ResultActions result = mockMvc.perform(
                 post(URL)
@@ -46,33 +39,29 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
                                 """.formatted(originalCode)));
 
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.memberId").value(savedMember.getId()))
+                .andExpect(jsonPath("$.memberId").value(memberId))
                 .andExpect(jsonPath("$.fullName").value("Иван Петрович Петров"));
 
-        QrCode storedQrCode = qrCodeRepository.findById(savedQrCode.getId())
+        QrCode storedQrCode = qrCodeRepository.findById(qrCodeId)
                 .orElseThrow();
 
         assertNotNull(storedQrCode.getCode());
         assertNotEquals(originalCode, storedQrCode.getCode());
         assertTrue(qrCodeRepository.findByCode(originalCode).isEmpty());
 
-        result.andExpect(jsonPath("$.newQrCode").value(storedQrCode.getCode().toString()));
+        result.andExpect(jsonPath("$.newQrCode")
+                .value(storedQrCode.getCode().toString()));
     }
 
     @DisplayName("Проверяем, что повторный вход по использованному QR-коду запрещён.")
     @Test
+    @Sql("classpath:sql/entry/active-member-with-qr.sql")
     void enter_whenCodeAlreadyUsed_returnsForbidden() throws Exception {
-        Member member = new Member();
-        member.setFirstName("Иван");
-        member.setMiddleName("Петрович");
-        member.setSurname("Петров");
-        Member savedMember = memberRepository.saveAndFlush(member);
+        long memberId = 1L;
+        long qrCodeId = 1L;
 
-        UUID originalCode = UUID.randomUUID();
-        QrCode qrCode = new QrCode();
-        qrCode.setCode(originalCode);
-        qrCode.setMember(savedMember);
-        QrCode savedQrCode = qrCodeRepository.saveAndFlush(qrCode);
+        UUID originalCode = UUID.fromString("11111111-1111-4111-8111-111111111111");
+
 
         ResultActions result = mockMvc.perform(
                 post(URL)
@@ -83,11 +72,11 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
 
 
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.memberId").value(savedMember.getId()))
+                .andExpect(jsonPath("$.memberId").value(memberId))
                 .andExpect(jsonPath("$.fullName").value("Иван Петрович Петров"));
 
         UUID codeAfterFirstEntry = qrCodeRepository
-                .findById(savedQrCode.getId())
+                .findById(qrCodeId)
                 .orElseThrow()
                 .getCode();
 
@@ -104,7 +93,7 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
                         .value("Вход запрещён: QR-код не найден"));
 
         QrCode storedQrCode = qrCodeRepository
-                .findById(savedQrCode.getId())
+                .findById(qrCodeId)
                 .orElseThrow();
 
         assertEquals(codeAfterFirstEntry, storedQrCode.getCode());
@@ -112,22 +101,16 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
 
     @DisplayName("Проверяем, что удалённому участнику запрещён вход и его QR-код не меняется.")
     @Test
+    @Sql({
+            "classpath:sql/entry/active-member-with-qr.sql",
+            "classpath:sql/entry/mark-member-deleted.sql"
+    })
     void enter_whenMemberDeleted_returnsForbiddenAndKeepsCode() throws Exception {
-        Member member = new Member();
-        member.setFirstName("Иван");
-        member.setMiddleName("Петрович");
-        member.setSurname("Петров");
-        member.setDeletedAt(LocalDateTime.now());
+        long memberId = 1L;
+        long qrCodeId = 1L;
 
-        Member savedMember = memberRepository.saveAndFlush(member);
+        UUID originalCode = UUID.fromString("11111111-1111-4111-8111-111111111111");
 
-        UUID originalCode = UUID.randomUUID();
-
-        QrCode qrCode = new QrCode();
-        qrCode.setCode(originalCode);
-        qrCode.setMember(savedMember);
-
-        QrCode savedQrCode = qrCodeRepository.saveAndFlush(qrCode);
 
         mockMvc.perform(
                         post(URL)
@@ -142,7 +125,7 @@ class EntryControllerIntegrationTest extends BaseIntegrationTest {
                         .value("Вход запрещён: участник удалён"));
 
         QrCode storedQrCode = qrCodeRepository
-                .findById(savedQrCode.getId())
+                .findById(qrCodeId)
                 .orElseThrow();
 
         assertEquals(originalCode, storedQrCode.getCode());
