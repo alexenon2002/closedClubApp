@@ -1,0 +1,1 @@
+TRUNCATE TABLE public.qr_codes, public.members RESTART IDENTITY;

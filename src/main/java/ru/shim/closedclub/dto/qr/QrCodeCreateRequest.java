@@ -1,4 +1,6 @@
 package ru.shim.closedclub.dto.qr;
 
-public class QrCodeCreateRequest {
+import jakarta.validation.constraints.NotNull;
+
+public record QrCodeCreateRequest(@NotNull Long memberId) {
 }
